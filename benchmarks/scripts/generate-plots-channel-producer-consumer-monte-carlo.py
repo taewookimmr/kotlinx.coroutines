@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.backends.backend_pdf import PdfPages
 
-inputFile = "resultsProdCons.csv"
+inputFile = "results_channel_producer_consumer_montecarlo.csv"
 outputFile = 'channel-producer-consumer-monte-carlo.pdf'
 
 markers = ['.', 'v', '^', '1', '2', '8', 'p', 'P', 'x', 'D', 'd', 's']

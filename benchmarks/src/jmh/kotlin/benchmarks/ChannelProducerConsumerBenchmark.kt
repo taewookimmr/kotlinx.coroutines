@@ -8,8 +8,6 @@ import ChannelCreator
 import ChannelProducerConsumerBenchmarkIteration
 import DispatcherCreator
 import doGeomDistrWork
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.selects.select
 import org.openjdk.jmh.annotations.*
 import java.lang.Integer.max
@@ -50,45 +48,38 @@ open class ChannelProducerConsumerBenchmark {
 //    @Param("1", "2", "4", "8", "16", "32", "64", "96") // Google Cloud
     private var _4_parallelism: Int = 0
 
-    private lateinit var dispatcher: CoroutineDispatcher
-
-    @InternalCoroutinesApi
-    @Setup
-    fun setup() {
-        dispatcher = _0_dispatcher.create(_4_parallelism)
-    }
-
     @Benchmark
     fun spmc() {
         if (_2_coroutines != 0) return
         val producers = max(1, _4_parallelism - 1)
         val consumers = 1
-        val iterationJMH = ChannelProducerConsumerBenchmarkIterationJMH(_3_withSelect, dispatcher, _1_channel, producers,
-                consumers, APPROX_BATCH_SIZE)
-        iterationJMH.run()
+        val iteration = ChannelProducerConsumerBenchmarkIterationJMH(_3_withSelect, _0_dispatcher, _1_channel, _4_parallelism,
+                producers, consumers, APPROX_BATCH_SIZE)
+        iteration.run()
     }
 
     @Benchmark
     fun mpmc() {
         val producers = if (_2_coroutines == 0) (_4_parallelism + 1) / 2 else _2_coroutines / 2
         val consumers = producers
-        val iterationJMH = ChannelProducerConsumerBenchmarkIterationJMH(_3_withSelect, dispatcher, _1_channel, producers,
-                consumers, APPROX_BATCH_SIZE)
-        iterationJMH.run()
+        val iteration = ChannelProducerConsumerBenchmarkIterationJMH(_3_withSelect, _0_dispatcher, _1_channel, _4_parallelism,
+                producers, consumers, APPROX_BATCH_SIZE)
+        iteration.run()
     }
 }
 
-private const val WORK = 40
+private const val WORK = 80
 private const val APPROX_BATCH_SIZE = 100000
 
 class ChannelProducerConsumerBenchmarkIterationJMH(withSelect: Boolean,
-                                                   dispatcher: CoroutineDispatcher,
+                                                   dispatcherCreator: DispatcherCreator,
                                                    channelCreator: ChannelCreator,
+                                                   parallelism: Int,
                                                    producers: Int,
                                                    consumers: Int,
                                                    approximateBatchSize: Int)
-    : ChannelProducerConsumerBenchmarkIteration(withSelect, dispatcher, channelCreator, producers, consumers, approximateBatchSize) {
-    override fun doProducerWork(coroutineNumber: Int) = doGeomDistrWork(WORK)
+    : ChannelProducerConsumerBenchmarkIteration(withSelect, dispatcherCreator, channelCreator, parallelism, producers, consumers, approximateBatchSize) {
+    override fun doProducerWork(id: Int) = doGeomDistrWork(WORK)
 
-    override fun doConsumerWork(coroutineNumber: Int) = doGeomDistrWork(WORK)
+    override fun doConsumerWork(id: Int) = doGeomDistrWork(WORK)
 }

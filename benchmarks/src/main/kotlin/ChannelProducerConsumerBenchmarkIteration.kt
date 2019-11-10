@@ -2,22 +2,18 @@
  * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.selects.select
-import java.util.concurrent.ForkJoinPool
-import java.util.concurrent.Phaser
+import kotlinx.coroutines.*
+import java.util.concurrent.*
 
 abstract class ChannelProducerConsumerBenchmarkIteration(private val withSelect: Boolean,
-                                                         private val dispatcher: CoroutineDispatcher,
+                                                         dispatcherCreator: DispatcherCreator,
                                                          private val channelCreator: ChannelCreator,
+                                                         parallelism: Int,
                                                          private val producers: Int,
                                                          private val consumers: Int,
                                                          private val approximateBatchSize: Int) {
-    private var channel: Channel<Int> = channelCreator.create()
+    private val channel: Channel<Int> = channelCreator.create()
+    val dispatcher = dispatcherCreator.create(parallelism)
 
     fun run() {
         val totalMessagesCount = approximateBatchSize / (producers * consumers) * (producers * consumers)
@@ -42,7 +38,7 @@ abstract class ChannelProducerConsumerBenchmarkIteration(private val withSelect:
                 phaser.arrive()
             }
         }
-        // Wait until work is done
+        // Wait until the work is done
         phaser.arriveAndAwaitAdvance()
     }
 
@@ -70,14 +66,14 @@ abstract class ChannelProducerConsumerBenchmarkIteration(private val withSelect:
         doConsumerWork(coroutineNumber)
     }
 
-    abstract fun doProducerWork(coroutineNumber: Int)
+    abstract fun doProducerWork(id: Int)
 
-    abstract fun doConsumerWork(coroutineNumber: Int)
+    abstract fun doConsumerWork(id: Int)
 }
 
 enum class DispatcherCreator(val create: (parallelism: Int) -> CoroutineDispatcher) {
     FORK_JOIN({ parallelism ->  ForkJoinPool(parallelism).asCoroutineDispatcher() }),
-    EXPERIMENTAL({ parallelism -> kotlinx.coroutines.scheduling.ExperimentalCoroutineDispatcher(corePoolSize = parallelism, maxPoolSize = parallelism) })
+    EXPERIMENTAL({ parallelism -> ExperimentalCoroutineDispatcher(corePoolSize = parallelism, maxPoolSize = parallelism) })
 }
 
 enum class ChannelCreator(private val capacity: Int) {
