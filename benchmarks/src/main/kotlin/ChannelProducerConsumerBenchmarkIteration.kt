@@ -3,8 +3,12 @@
  */
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.scheduling.*
+import kotlinx.coroutines.selects.*
 import java.util.concurrent.*
 
+// TODO arguments ordering: channelCreator + withSelect + producers + consumers + dispatcher + parallelism + approximateBatchSize
 abstract class ChannelProducerConsumerBenchmarkIteration(private val withSelect: Boolean,
                                                          dispatcherCreator: DispatcherCreator,
                                                          private val channelCreator: ChannelCreator,
@@ -16,13 +20,13 @@ abstract class ChannelProducerConsumerBenchmarkIteration(private val withSelect:
     val dispatcher = dispatcherCreator.create(parallelism)
 
     fun run() {
-        val totalMessagesCount = approximateBatchSize / (producers * consumers) * (producers * consumers)
+        val totalMessages = approximateBatchSize / (producers * consumers) * (producers * consumers)
         val phaser = Phaser(producers + consumers + 1)
         // Run producers
         repeat(producers) { coroutineNumber ->
             GlobalScope.launch(dispatcher) {
                 val dummy = if (withSelect) channelCreator.create() else null
-                repeat(totalMessagesCount / producers) {
+                repeat(totalMessages / producers) {
                     produce(it, dummy, coroutineNumber)
                 }
                 phaser.arrive()
@@ -32,7 +36,7 @@ abstract class ChannelProducerConsumerBenchmarkIteration(private val withSelect:
         repeat(consumers) { coroutineNumber ->
             GlobalScope.launch(dispatcher) {
                 val dummy = if (withSelect) channelCreator.create() else null
-                repeat(totalMessagesCount / consumers) {
+                repeat(totalMessages / consumers) {
                     consume(dummy, coroutineNumber)
                 }
                 phaser.arrive()
@@ -67,7 +71,6 @@ abstract class ChannelProducerConsumerBenchmarkIteration(private val withSelect:
     }
 
     abstract fun doProducerWork(id: Int)
-
     abstract fun doConsumerWork(id: Int)
 }
 
