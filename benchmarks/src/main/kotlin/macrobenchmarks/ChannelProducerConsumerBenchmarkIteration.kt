@@ -2,19 +2,20 @@
  * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
+package macrobenchmarks
+
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.scheduling.*
 import kotlinx.coroutines.selects.*
 import java.util.concurrent.*
 
-// TODO arguments ordering: channelCreator + withSelect + producers + consumers + dispatcher + parallelism + approximateBatchSize
-abstract class ChannelProducerConsumerBenchmarkIteration(private val withSelect: Boolean,
-                                                         dispatcherCreator: DispatcherCreator,
-                                                         private val channelCreator: ChannelCreator,
-                                                         parallelism: Int,
+abstract class ChannelProducerConsumerBenchmarkIteration(private val channelCreator: ChannelCreator,
+                                                         private val withSelect: Boolean,
                                                          private val producers: Int,
                                                          private val consumers: Int,
+                                                         dispatcherCreator: DispatcherCreator,
+                                                         parallelism: Int,
                                                          private val approximateBatchSize: Int) {
     private val channel: Channel<Int> = channelCreator.create()
     val dispatcher = dispatcherCreator.create(parallelism)

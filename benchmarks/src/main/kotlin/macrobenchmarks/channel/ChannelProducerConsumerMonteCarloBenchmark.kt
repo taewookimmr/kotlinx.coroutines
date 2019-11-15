@@ -6,12 +6,8 @@
 
 package macrobenchmarks.channel
 
-import ChannelCreator
-import ChannelProducerConsumerBenchmarkIteration
-import DispatcherCreator
-import doGeomDistrWork
+import macrobenchmarks.*
 import org.nield.kotlinstatistics.*
-import runProcess
 import java.io.*
 import java.nio.file.*
 import kotlin.math.*
@@ -40,7 +36,7 @@ private const val MAX_WORK_MULTIPLIER = 5.0
 /**
  * Approximate total number of sent/received messages
  */
-private const val APPROXIMATE_BATCH_SIZE = 750_000
+private const val APPROXIMATE_BATCH_SIZE = 100_000
 /**
  * The threshold when a current benchmark configuration stops running
  */
@@ -83,11 +79,10 @@ private val jvmOptions = listOf<String>(/*"-Xmx64m", "-XX:+PrintGC"*/)
 fun main() {
     // Create a new output CSV file and write the header
     Files.createDirectories(Paths.get(OUTPUT).parent)
-    PrintWriter(OUTPUT).use { pw ->
-        pw.println("channel,threads,withBalancing,dispatcherType,withSelect,result,std,iterations")
-    }
+    writeOutputHeader()
 
-    val benchmarksConfigurationsNumber = THREADS.size * ChannelCreator.values().size
+    val totalIterations = ChannelCreator.values().size * THREADS.size * WITH_BALANCING.size *
+                                                DispatcherCreator.values().size * WITH_SELECT.size
     var currentConfigurationNumber = 0
     val startTime = System.currentTimeMillis()
 
@@ -101,8 +96,8 @@ fun main() {
                                 withBalancing.toString(),
                                 dispatcherType.toString(),
                                 withSelect.toString(),
-                                benchmarksConfigurationsNumber.toString(),
                                 currentConfigurationNumber.toString(),
+                                totalIterations.toString(),
                                 startTime.toString())
                         val exitValue = runProcess(MonteCarloIterationProcess::class.java.name, jvmOptions, args)
                         if (exitValue != 0) {
@@ -127,19 +122,30 @@ class MonteCarloIterationProcess {
             val dispatcherType = DispatcherCreator.valueOf(args[3])
             val withSelect = args[4].toBoolean()
             val currentConfigurationNumber = args[5].toInt()
-            val benchmarksConfigurationsNumber = args[6].toInt()
+            val totalIterations = args[6].toInt()
             val startTime = args[7].toLong()
 
-            print("\rchannel=$channel threads=$threads withBalancing=$withBalancing dispatcherType=$dispatcherType withSelect=$withSelect: warm-up phase... [${eta(currentConfigurationNumber, benchmarksConfigurationsNumber, startTime)}]")
+            print("\rchannel=$channel threads=$threads withBalancing=$withBalancing dispatcherType=$dispatcherType withSelect=$withSelect: warm-up phase... [${eta(currentConfigurationNumber, totalIterations, startTime)}]")
 
             repeat(WARM_UP_ITERATIONS) {
                 runIteration(threads, channel, withBalancing, withSelect, dispatcherType)
             }
 
             runMonteCarlo(threads, channel, withBalancing, withSelect, dispatcherType) {
-                eta(currentConfigurationNumber, benchmarksConfigurationsNumber, startTime)
+                eta(currentConfigurationNumber, totalIterations, startTime)
             }
         }
+    }
+}
+
+private fun writeOutputHeader() = PrintWriter(OUTPUT).use { pw ->
+        pw.println("channel,threads,withBalancing,dispatcherType,withSelect,result,std,iterations")
+}
+
+private fun writeIterationResults(channel: ChannelCreator, threads: Int, withBalancing: Boolean, dispatcherType : DispatcherCreator,
+                                  withSelect : Boolean, result : Int, std : Int, runIteration : Int) {
+    FileOutputStream(OUTPUT, true).bufferedWriter().use {
+        writer -> writer.append("$channel,$threads,$withBalancing,$dispatcherType,$withSelect,$result,$std,$runIteration\n")
     }
 }
 
@@ -170,9 +176,8 @@ private fun runMonteCarlo(threads: Int,
     val std = runExecutionTimesMs.standardDeviation().toInt()
     println("\rchannel=$channel threads=$threads withBalancing=$withBalancing dispatcherType=$dispatcherType withSelect=$withSelect result=$result std=$std iterations=$runIteration")
 
-    FileOutputStream(OUTPUT, true).bufferedWriter().use {
-        writer -> writer.append("$channel,$threads,$withBalancing,$dispatcherType,$withSelect,$result,$std,$runIteration\n")
-    }
+    writeIterationResults(channel = channel, threads = threads, withBalancing = withBalancing, dispatcherType = dispatcherType,
+                            withSelect = withSelect, result = result, std = std, runIteration = runIteration)
 }
 
 /**
@@ -196,8 +201,8 @@ fun runIteration(threads: Int, channelCreator: ChannelCreator, withBalancing: Bo
     val consumers = max(1, threads - producers)
 
     val channelProducerConsumerBenchmarkWorker = ChannelProducerConsumerBenchmarkIterationMonteCarlo(
-        withBalancing, withSelect, dispatcherCreator, channelCreator, producers + consumers,
-        producers, consumers, APPROXIMATE_BATCH_SIZE)
+            channelCreator, withSelect, producers, consumers, withBalancing,
+            dispatcherCreator, producers + consumers, APPROXIMATE_BATCH_SIZE)
 
     val startTime = System.nanoTime()
     channelProducerConsumerBenchmarkWorker.run()
@@ -211,15 +216,15 @@ fun runIteration(threads: Int, channelCreator: ChannelCreator, withBalancing: Bo
     return (endTime - startTime) / 1_000_000 // ms
 }
 
-class ChannelProducerConsumerBenchmarkIterationMonteCarlo(withBalancing: Boolean,
+class ChannelProducerConsumerBenchmarkIterationMonteCarlo(channelCreator: ChannelCreator,
                                                           withSelect: Boolean,
-                                                          dispatcherCreator: DispatcherCreator,
-                                                          channelCreator: ChannelCreator,
-                                                          parallelism: Int,
                                                           producers: Int,
                                                           consumers: Int,
+                                                          withBalancing: Boolean,
+                                                          dispatcherCreator: DispatcherCreator,
+                                                          parallelism: Int,
                                                           approximateBatchSize : Int)
-    : ChannelProducerConsumerBenchmarkIteration(withSelect, dispatcherCreator, channelCreator, parallelism, producers, consumers, approximateBatchSize) {
+    : ChannelProducerConsumerBenchmarkIteration(channelCreator, withSelect, producers, consumers, dispatcherCreator, parallelism, approximateBatchSize) {
     private val producerWorks : Array<Int>
 
     private val consumerWorks : Array<Int>

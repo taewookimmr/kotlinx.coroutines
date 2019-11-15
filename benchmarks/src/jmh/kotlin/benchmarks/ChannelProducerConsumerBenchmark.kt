@@ -6,11 +6,8 @@
 
 package benchmarks
 
-import ChannelCreator
-import ChannelProducerConsumerBenchmarkIteration
-import DispatcherCreator
-import doGeomDistrWork
 import kotlinx.coroutines.selects.*
+import macrobenchmarks.*
 import org.openjdk.jmh.annotations.*
 import java.lang.Integer.*
 import java.util.concurrent.*
@@ -26,8 +23,8 @@ import java.util.concurrent.*
  * Please, be patient, this benchmark takes quite a lot of time to complete.
  */
 @Warmup(iterations = 3, time = 500, timeUnit = TimeUnit.MICROSECONDS)
-@Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MICROSECONDS)
-@Fork(value = 3)
+@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MICROSECONDS)
+@Fork(value = 1)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
@@ -75,7 +72,7 @@ private const val APPROX_BATCH_SIZE = 100000
 
 class ChannelProducerConsumerBenchmarkIterationJMH(dispatcherCreator: DispatcherCreator, channelCreator: ChannelCreator,
                                                    withSelect: Boolean, parallelism: Int, producers: Int, consumers: Int)
-    : ChannelProducerConsumerBenchmarkIteration(withSelect, dispatcherCreator, channelCreator, parallelism, producers, consumers, APPROX_BATCH_SIZE) {
+    : ChannelProducerConsumerBenchmarkIteration(channelCreator, withSelect, producers, consumers, dispatcherCreator,  parallelism, APPROX_BATCH_SIZE) {
     override fun doProducerWork(id: Int) = doGeomDistrWork(AVERAGE_WORK)
     override fun doConsumerWork(id: Int) = doGeomDistrWork(AVERAGE_WORK)
 }
