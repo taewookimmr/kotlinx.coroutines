@@ -4,9 +4,9 @@
 
 @file:JvmName("ChannelProducerConsumerMonteCarloBenchmark")
 
-package macrobenchmarks.channel
+package macrobenchmarks
 
-import macrobenchmarks.*
+import benchmarks.common.*
 import org.nield.kotlinstatistics.*
 import java.io.*
 import java.nio.file.*
@@ -177,7 +177,7 @@ private fun runMonteCarlo(threads: Int,
     println("\rchannel=$channel threads=$threads withBalancing=$withBalancing dispatcherType=$dispatcherType withSelect=$withSelect result=$result std=$std iterations=$runIteration")
 
     writeIterationResults(channel = channel, threads = threads, withBalancing = withBalancing, dispatcherType = dispatcherType,
-                            withSelect = withSelect, result = result, std = std, runIteration = runIteration)
+            withSelect = withSelect, result = result, std = std, runIteration = runIteration)
 }
 
 /**

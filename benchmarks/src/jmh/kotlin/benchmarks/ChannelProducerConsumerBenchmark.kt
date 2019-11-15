@@ -6,8 +6,8 @@
 
 package benchmarks
 
+import benchmarks.common.*
 import kotlinx.coroutines.selects.*
-import macrobenchmarks.*
 import org.openjdk.jmh.annotations.*
 import java.lang.Integer.*
 import java.util.concurrent.*

@@ -49,7 +49,7 @@ def draw(data, ax_arr):
                     gen_colour = next(colour_gen)
                     gen_marker = next(marker_gen)
                     res = data[(data.dispatcher == dispatcher) & (data.channel == channel) & (data.coroutines == coroutines) & (data.with_select == with_select)]
-                    flatten_ax_arr[i].plot(res.parallelism, res.score, label="channel={},coroutines={},with_select={}".format(channel, coroutines, with_select), color=gen_colour, marker=gen_marker)
+                    flatten_ax_arr[i].plot(res.parallelism, res.score, label="channel={},with_select={}".format(channel, with_select), color=gen_colour, marker=gen_marker)
 #                     flatten_ax_arr[i].errorbar(x=res.parallelism, y=res.score, yerr=res.score_error, solid_capstyle='projecting', label="channel={},coroutines={},with_select={}".format(channel, coroutines, with_select), capsize=4, color=gen_colour, marker=gen_marker)
             i += 1
 
