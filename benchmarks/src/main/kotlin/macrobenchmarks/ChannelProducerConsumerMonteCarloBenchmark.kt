@@ -35,6 +35,9 @@ private const val BASELINE_WORK = 50
 private const val MAX_WORK_MULTIPLIER = 5.0
 /**
  * Approximate total number of sent/received messages
+ *
+ * If you change this variable please be sure that you change variable elements in the
+ * generate_plots_channel_producer_consumer_monte_carlo.py python script as well
  */
 private const val APPROXIMATE_BATCH_SIZE = 100_000
 /**
@@ -48,11 +51,11 @@ private const val ITERATIONS_BETWEEN_THRESHOLD_CHECK = 50
 /**
  * Different types of creating workload in the benchmark: using balanced or unbalanced work load
  */
-private val WITH_BALANCING = listOf(true, false)
+private val WITH_BALANCING = listOf(false, true)
 /**
  * Should select be used in the benchmark or not
  */
-private val WITH_SELECT = listOf(true, false)
+private val WITH_SELECT = listOf(false, true)
 /**
  * Benchmark output file
  */
@@ -143,9 +146,9 @@ private fun writeOutputHeader() = PrintWriter(OUTPUT).use { pw ->
 }
 
 private fun writeIterationResults(channel: ChannelCreator, threads: Int, withBalancing: Boolean, dispatcherType : DispatcherCreator,
-                                  withSelect : Boolean, result : Int, std : Int, runIteration : Int) {
+                                  withSelect : Boolean, result : Int, std : Int, iterations : Int) {
     FileOutputStream(OUTPUT, true).bufferedWriter().use {
-        writer -> writer.append("$channel,$threads,$withBalancing,$dispatcherType,$withSelect,$result,$std,$runIteration\n")
+        writer -> writer.append("$channel,$threads,$withBalancing,$dispatcherType,$withSelect,$result,$std,$iterations\n")
     }
 }
 
@@ -177,7 +180,7 @@ private fun runMonteCarlo(threads: Int,
     println("\rchannel=$channel threads=$threads withBalancing=$withBalancing dispatcherType=$dispatcherType withSelect=$withSelect result=$result std=$std iterations=$runIteration")
 
     writeIterationResults(channel = channel, threads = threads, withBalancing = withBalancing, dispatcherType = dispatcherType,
-            withSelect = withSelect, result = result, std = std, runIteration = runIteration)
+            withSelect = withSelect, result = result, std = std, iterations = runIteration)
 }
 
 /**

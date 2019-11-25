@@ -1,6 +1,10 @@
+# To run this script run the command 'python3 scripts/generate_plots_channel_producer_consumer_monte_carlo.py'
+# in the benchmarks/ folder or 'python3 generate_plots_channel_producer_consumer_monte_carlo.py' in the benchmarks/scripts/ folder
+
 import pandas as pd
 import sys
 import matplotlib.pyplot as plt
+import locale
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -14,7 +18,7 @@ rename_columns = {"Benchmark": "benchmark", "Score" : "score", "Score Error (99,
                   "Param: _3_withSelect" : "with_select", "Param: _4_parallelism" : "parallelism"}
 
 markers = ['.', 'v', '^', '1', '2', '8', 'p', 'P', 'x', 'D', 'd', 's']
-colours = ['red', 'gold', 'sienna', 'olivedrab', 'lightseagreen', 'navy', 'blue', 'm', 'crimson', 'yellow', 'orangered', 'slateblue', 'aqua', 'black', 'silver']
+colours = ['#F7A3FF', '#EA00FF', '#2DA6C4', '#238199', '#1CD100', '#139100', '#fcae91', '#fb6a4a', '#8585D6', '#62629E', '#858585', '#2B2B2B', '#FFFF00', '#BABA00']
 
 def next_colour():
     i = 0
@@ -34,14 +38,14 @@ def draw(data, ax_arr):
         ax.set_xscale('log', basex=2)
         ax.xaxis.set_major_formatter(FormatStrFormatter('%0.f'))
         ax.grid(linewidth='0.5', color='lightgray')
-        ax.set_ylabel("ms/op")
+        ax.set_ylabel(data.unit.unique()[0])
         ax.set_xlabel('parallelism')
         ax.set_xticks(data.parallelism.unique())
 
     i = 0
     for coroutines in data.coroutines.unique():
         for dispatcher in data.dispatcher.unique():
-            flatten_ax_arr[i].set_title("coroutines={},dispatcher={}".format(coroutines, dispatcher))
+            flatten_ax_arr[i].set_title("coroutines={},dispatcher={}".format(int(coroutines), dispatcher))
             colour_gen = next_colour()
             marker_gen = next_marker()
             for channel in data.channel.unique():
@@ -49,22 +53,26 @@ def draw(data, ax_arr):
                     gen_colour = next(colour_gen)
                     gen_marker = next(marker_gen)
                     res = data[(data.dispatcher == dispatcher) & (data.channel == channel) & (data.coroutines == coroutines) & (data.with_select == with_select)]
-                    flatten_ax_arr[i].plot(res.parallelism, res.score, label="channel={},with_select={}".format(channel, with_select), color=gen_colour, marker=gen_marker)
+                    flatten_ax_arr[i].plot(res.parallelism, res.score, label="channel={},with_select={}".format(channel, with_select), color=gen_colour, marker=gen_marker, linewidth=2.2)
 #                     flatten_ax_arr[i].errorbar(x=res.parallelism, y=res.score, yerr=res.score_error, solid_capstyle='projecting', label="channel={},coroutines={},with_select={}".format(channel, coroutines, with_select), capsize=4, color=gen_colour, marker=gen_marker)
             i += 1
 
 def draw_cons_prod(data, suptitle):
+    plt.rcParams.update({'font.size': 15})
     fig, ax_arr = plt.subplots(nrows=2, ncols=len(data.dispatcher.unique()), figsize=(20, 15))
     draw(data, ax_arr)
     lines, labels = ax_arr[0, 0].get_legend_handles_labels()
-    fig.suptitle(suptitle, fontsize=12, y=1)
-    fig.legend(lines, labels, loc='upper center', borderpad=0, ncol=4, frameon=False, borderaxespad=4, prop={'size': 8})
+    fig.suptitle(suptitle, fontsize=15, y=1)
+    fig.legend(lines, labels, loc='upper center', borderpad=0, ncol=2, frameon=False, borderaxespad=2, prop={'size': 15})
 
     plt.tight_layout(pad=12, w_pad=2, h_pad=1)
     pdf.savefig(bbox_inches='tight')
 
 def genFile(pdf):
-    data = pd.read_csv(input_file, sep=",", decimal=",")
+    langlocale = locale.getdefaultlocale()[0]
+    locale.setlocale(locale.LC_ALL, langlocale)
+    dp = locale.localeconv()['decimal_point']
+    data = pd.read_csv(input_file, sep=",", decimal=dp)
     data = data[csv_columns].rename(columns=rename_columns)
     mpmc_data = data[(data.benchmark == mpmc_benchmark_name)]
     draw_cons_prod(mpmc_data, "mpmc")
