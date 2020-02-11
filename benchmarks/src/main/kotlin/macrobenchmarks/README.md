@@ -1,13 +1,20 @@
 # Macrobenchmarks
 
-This package contains various macrobenchmarks that test different aspects of the performance of coroutines. These benchmarks try to emulate real life applications that could use coroutines in them. The idea is to test not a specific part of the implementation but to test the performance in general.
+This package contains various macro benchmarks that test different aspects of the Kotlin Coroutines performance. These benchmarks simulate real-life applications that use coroutines, and we assume that they are used to test the performance in general.
 
-## Channel producer consumer monte carlo benchmark
+## Producer-Consumer Monte-Carlo Benchmark for Channels
 
-The benchmark is similar to the `ChannelProducerConsumerBenchmark.kt`, but the difference is that it has random numbers of producers and consumers depending on the thread number, and it tries to get the average time of executions varying producers and consumers numbers.
+This benchmark is similar to the `ChannelProducerConsumerBenchmark.kt`, but instead of fixing parameters like "additional work" or "number of producers to number of consumers relation", it examines the _average_ performance using the Monte-Carlo approach. Note that this benchmark tests channels under the high-contention workload. Please, see `ChannelProdConsMonteCarloBenchmark.kt` for more details and configuration parameters.
 
-The benchmark is designed to test the performance of channels under contention, and how it depends on the different types of channels and dispatchers and usage of select.
+#### How to run
+To run the benchmark, you can use the specified Gradle task, the output CSV file will be located in the `out/` directory. 
 
-You can find more details of the benchmark in the `ChannelProdConsMonteCarloBenchmark.kt`. All the configuration for this benchmark are contained there, too. You can change them according your desire to test different work load.
+```
+./gradlew runChanProdConsMCBench
+``` 
 
-This benchmark could be run using gradle task `./gradlew runChannelMonteCarloBenchmark`.
+You can generate plots based on your results executing the following command from the `benchmarks` directory.
+
+```
+python3 scripts/generate_plots_channel_prod_cons_monte_carlo.py
+```

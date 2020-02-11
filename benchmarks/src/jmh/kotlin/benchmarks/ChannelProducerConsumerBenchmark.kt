@@ -30,7 +30,7 @@ import java.util.concurrent.*
 @State(Scope.Benchmark)
 open class ChannelProducerConsumerBenchmark {
     @Param
-    private var _0_dispatcher: DispatcherCreator = DispatcherCreator.ForkJoin
+    private var _0_dispatcher: DispatcherCreator = DispatcherCreator.Experimental
 
     @Param
     private var _1_channel: ChannelCreator = ChannelCreator.Rendezvous

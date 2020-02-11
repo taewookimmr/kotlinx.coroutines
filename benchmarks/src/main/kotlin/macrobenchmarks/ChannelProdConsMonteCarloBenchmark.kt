@@ -14,19 +14,19 @@ import kotlin.math.*
 import kotlin.random.*
 
 /**
- * Total amount of threads in a benchmark
+ * Numbers of threads to be used in the benchmark
  */
-private val THREADS = arrayOf(1, 4, 16, 32)
+private val THREADS = arrayOf(1, 2, 4, 8)
 /**
- * Warm up iterations count
+ * Number of warm-up iterations
  */
 private const val WARM_UP_ITERATIONS = 5
 /**
- * Maximum number of calling [runIteration] function
+ * Maximum number of iterations for each configuration
  */
 private const val MAX_ITERATIONS = 5_000
 /**
- * The baseline for loop iterations each working thread does on average on each interaction with a channel
+ * Additional work baseline (after each send/receive invocation)
  */
 private const val BASELINE_WORK = 50
 /**
@@ -34,22 +34,28 @@ private const val BASELINE_WORK = 50
  */
 private const val MAX_WORK_MULTIPLIER = 5.0
 /**
- * Approximate total number of sent/received messages
+ * Approximate number of sent/received messages
  *
  * If you change this variable please be sure that you change variable elements in the
- * generate_plots_channel_producer_consumer_monte_carlo.py python script as well
+ * `scripts/generate_plots_channel_prod_cons_monte_carlo.py` python script as well
  */
-private const val APPROXIMATE_BATCH_SIZE = 10_000
+private const val APPROXIMATE_BATCH_SIZE = 50_000
 /**
- * The threshold when a current benchmark configuration stops running
- */
-private const val MONTECARLO_STOP_THRESHOLD = 0.01
-/**
- * Number of iteration between checking if a current benchmark configuration should be stopped
+ * After the specified number of iterations the benchmark checks
+ * whether the last [ITERATIONS_BETWEEN_THRESHOLD_CHECK] iterations
+ * did not influence on the results significantly and stops in this case.
+ *
+ * Number of iteration between checking if the current benchmark configuration should be stopped
  */
 private const val ITERATIONS_BETWEEN_THRESHOLD_CHECK = 50
 /**
- * Should select be used in the benchmark or not
+ * This threshold is used for checking whether the last iterations
+ * changed the results significantly; we assume that the changes
+ * are significant if the difference is greater than `result x MONTECARLO_STOP_THRESHOLD`.
+ */
+private const val MONTECARLO_STOP_THRESHOLD = 0.01
+/**
+ * Indicates whether the `select` expression should be used
  */
 private val WITH_SELECT = listOf(false, true)
 /**
@@ -57,50 +63,41 @@ private val WITH_SELECT = listOf(false, true)
  */
 private const val OUTPUT = "out/results_channel_prod_cons_montecarlo.csv"
 /**
- * Options for the new jvm instance
+ * Options for benchmark jvm instances
  */
 private val jvmOptions = listOf<String>(/*"-Xmx64m", "-XX:+PrintGC"*/)
 
 /**
- * This benchmark tests the performance of different types of channel as working queues.
+ * This benchmark tests different channels in the producer-consumer workload.
  *
- * First it chooses all parameters that we want to test in this benchmark, a benchmark configuration.
- * Each iteration creates N producers and M consumers, M + N = current count of threads. For each producer and consumer
- * workload is randomly chosen (workload may be balanced or unbalanced according to the benchmark configuration). Then
- * the benchmark starts all producers and consumers coroutines. Producers send to a channel messages and then do
- * some work on CPU, consumers receive messages from the channel and do some work on CPU. Total amount of sent messages
- * is ~ [APPROXIMATE_BATCH_SIZE]. The main thread waits for all coroutines to stop, then measures the execution time of
- * the current iteration.
- *
- * The benchmark stops execution the current benchmark configuration if execution times became stable and stopped changing
- * drastically.
+ * For each parameters combination, it runs a lot of iterations with random numbers of producers and consumers
+ * (their sum should be equal to the number of threads) and random additional works after each send or receive invocation
+ * (we also keep the workload balanced). Each iteration performs about [APPROXIMATE_BATCH_SIZE] send-receive transfers.
+ * The benchmark stops when the current results become stable
+ * (see [MONTECARLO_STOP_THRESHOLD] and [ITERATIONS_BETWEEN_THRESHOLD_CHECK] for details).
  */
 fun main() {
     // Create a new output CSV file and write the header
     Files.createDirectories(Paths.get(OUTPUT).parent)
     writeOutputHeader()
-
+    // Calculate necessary for ETA properties
     val totalIterations = ChannelCreator.values().size * THREADS.size * DispatcherCreator.values().size * WITH_SELECT.size
     var currentConfigurationNumber = 0
     val startTime = System.currentTimeMillis()
-
+    // Run the benchmark for each configuration
     for (channel in ChannelCreator.values()) {
         for (threads in THREADS) {
             for (dispatcherType in DispatcherCreator.values()) {
                 for (withSelect in WITH_SELECT) {
-                    val args = arrayOf(channel.toString(),
-                            threads.toString(),
-                            dispatcherType.toString(),
-                            withSelect.toString(),
-                            currentConfigurationNumber.toString(),
-                            totalIterations.toString(),
-                            startTime.toString())
+                    val args = listOf(channel, threads, dispatcherType, withSelect,
+                                      currentConfigurationNumber, totalIterations, startTime)
+                               .map { it.toString() }.toTypedArray()
                     val exitValue = runProcess(MonteCarloIterationProcess::class.java.name, jvmOptions, args)
                     if (exitValue != 0) {
-                        println("The benchmark couldn't complete properly, will end running benchmarks")
+                        println("The benchmark failed with error, see the output.")
                         return
                     }
-                    currentConfigurationNumber++
+                    currentConfigurationNumber++ // for ETA
                 }
             }
         }
@@ -118,16 +115,13 @@ class MonteCarloIterationProcess {
             val currentConfigurationNumber = args[4].toInt()
             val totalIterations = args[5].toInt()
             val startTime = args[6].toLong()
-
-            print("\rchannel=$channel threads=$threads dispatcherType=$dispatcherType withSelect=$withSelect: warm-up phase... [${eta(currentConfigurationNumber, totalIterations, startTime)}]")
-
+            // Run benchmark for the configuration described above
+            val eta = eta(currentConfigurationNumber, totalIterations, startTime)
+            print("\rchannel=$channel threads=$threads dispatcherType=$dispatcherType withSelect=$withSelect: warm-up phase... [$eta]")
             repeat(WARM_UP_ITERATIONS) {
                 runIteration(threads, channel, withSelect, dispatcherType)
             }
-
-            runMonteCarlo(threads, channel, withSelect, dispatcherType) {
-                eta(currentConfigurationNumber, totalIterations, startTime)
-            }
+            executeBenchmark(threads, channel, withSelect, dispatcherType, currentConfigurationNumber, totalIterations, startTime)
         }
     }
 }
@@ -143,11 +137,8 @@ private fun writeIterationResults(channel: ChannelCreator, threads: Int, dispatc
     }
 }
 
-private fun runMonteCarlo(threads: Int,
-                          channel: ChannelCreator,
-                          withSelect: Boolean,
-                          dispatcherType: DispatcherCreator,
-                          generateEta : () -> String) {
+private fun executeBenchmark(threads: Int, channel: ChannelCreator, withSelect: Boolean, dispatcherType: DispatcherCreator,
+                             currentConfigurationNumber: Int, totalIterations: Int, startTime: Long) {
     val runExecutionTimesMs = ArrayList<Long>()
     var lastMean = -10000.0
     var runIteration = 0
@@ -157,7 +148,7 @@ private fun runMonteCarlo(threads: Int,
             runExecutionTimesMs += runIteration(threads, channel, withSelect, dispatcherType)
             val result = runExecutionTimesMs.average().toInt()
             val std = runExecutionTimesMs.standardDeviation().toInt()
-            val eta = generateEta.invoke()
+            val eta = eta(currentConfigurationNumber, totalIterations, startTime)
             print("\rchannel=$channel threads=$threads dispatcherType=$dispatcherType withSelect=$withSelect iteration=$runIteration result=$result std=$std [$eta]")
         }
         val curMean = runExecutionTimesMs.average()
@@ -176,48 +167,39 @@ private fun runMonteCarlo(threads: Int,
 /**
  * Estimated time of arrival
  */
-fun eta(curIteration: Int, totalIterations: Int, startTime: Long): String {
+private fun eta(curIteration: Int, totalIterations: Int, startTime: Long): String {
     if (curIteration == 0) return "ETA - NaN"
     val time = System.currentTimeMillis() - startTime
-    var eta = (time.toDouble() / curIteration * totalIterations / 60_000).toInt() // in minutes
+    val eta = (time.toDouble() / curIteration * totalIterations - time).toInt() / 60_000 // in minutes
     val minutes = eta % 60
-    eta /= 60
-    val hours = eta % 24
-    eta /= 24
-    val days = eta
-    return "ETA - $days days, $hours hours,  $minutes minutes"
+    val hours = eta / 60
+    return "ETA - $hours hours $minutes minutes"
 }
 
-fun runIteration(threads: Int, channelCreator: ChannelCreator, withSelect: Boolean, dispatcherCreator: DispatcherCreator): Long {
-    val producers = Random.nextInt(1, max(threads, 2))
-    val consumers = max(1, threads - producers)
-
-    val channelProducerConsumerBenchmarkWorker = MonteCarloBenchmarkIteration(
-            channelCreator, withSelect, producers, consumers,
-            dispatcherCreator, producers + consumers, APPROXIMATE_BATCH_SIZE)
-
+private fun runIteration(threads: Int, channelCreator: ChannelCreator, withSelect: Boolean, dispatcherCreator: DispatcherCreator): Long {
+    val producers = Random.nextInt(1, max(threads, 2)) // at least one producer
+    val consumers = max(1, threads - producers) // at least one consumer
+    // Run the iteration
+    val iteration = MonteCarloBenchmarkIteration(channelCreator, withSelect, producers, consumers,
+        dispatcherCreator, producers + consumers, APPROXIMATE_BATCH_SIZE)
     val startTime = System.nanoTime()
-    channelProducerConsumerBenchmarkWorker.run()
+    iteration.run()
     val endTime = System.nanoTime()
-
-    val dispatcher = channelProducerConsumerBenchmarkWorker.dispatcher
-    if (dispatcher is Closeable) {
-        dispatcher.close()
-    }
-
+    // Close resources and return the execution time
+    (iteration.dispatcher as? Closeable)?.close()
     return (endTime - startTime) / 1_000_000 // ms
 }
 
-class MonteCarloBenchmarkIteration(channelCreator: ChannelCreator,
-                                   withSelect: Boolean,
-                                   producers: Int,
-                                   consumers: Int,
-                                   dispatcherCreator: DispatcherCreator,
-                                   parallelism: Int,
-                                   approximateBatchSize : Int)
-    : ChannelProdConsBenchmarkIteration(channelCreator, withSelect, producers, consumers, dispatcherCreator, parallelism, approximateBatchSize) {
+private class MonteCarloBenchmarkIteration(
+    channelCreator: ChannelCreator,
+    withSelect: Boolean,
+    producers: Int,
+    consumers: Int,
+    dispatcherCreator: DispatcherCreator,
+    parallelism: Int,
+    approximateBatchSize: Int
+) : ChannelProdConsBenchmarkIteration(channelCreator, withSelect, producers, consumers, dispatcherCreator, parallelism, approximateBatchSize) {
     private val producerWorks : Array<Int>
-
     private val consumerWorks : Array<Int>
 
     init {
@@ -226,19 +208,18 @@ class MonteCarloBenchmarkIteration(channelCreator: ChannelCreator,
 
         val consumerToProducerBaselineRelation = 1.0 * (consumers * consumers) / (producers * producers) *
                 producerWorkMultipliers.sum() / consumerWorkMultipliers.sum()
-        val producerWorkBaseline: Int
-        val consumerWorkBaseline: Int
+        val producerBaselineWork: Int
+        val consumerBaselineWork: Int
         if (consumerToProducerBaselineRelation > 1) {
-            producerWorkBaseline = BASELINE_WORK
-            consumerWorkBaseline = (consumerToProducerBaselineRelation * BASELINE_WORK).toInt()
+            producerBaselineWork = BASELINE_WORK
+            consumerBaselineWork = (consumerToProducerBaselineRelation * BASELINE_WORK).toInt()
         } else {
-            consumerWorkBaseline = BASELINE_WORK
-            producerWorkBaseline = (BASELINE_WORK / consumerToProducerBaselineRelation).toInt()
+            consumerBaselineWork = BASELINE_WORK
+            producerBaselineWork = (BASELINE_WORK / consumerToProducerBaselineRelation).toInt()
         }
 
-        producerWorks = producerWorkMultipliers.map { (it * producerWorkBaseline).toInt() }.toTypedArray()
-        consumerWorks = consumerWorkMultipliers.map { (it * consumerWorkBaseline).toInt() }.toTypedArray()
-
+        producerWorks = producerWorkMultipliers.map { (it * producerBaselineWork).toInt() }.toTypedArray()
+        consumerWorks = consumerWorkMultipliers.map { (it * consumerBaselineWork).toInt() }.toTypedArray()
     }
 
     override fun doProducerWork(id: Int) = doGeomDistrWork(producerWorks[id])

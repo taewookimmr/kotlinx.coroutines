@@ -79,7 +79,7 @@ dependencies {
     jmh sourceSets.main.runtimeClasspath
 }
 
-task runChannelMonteCarloBenchmark(type : JavaExec) {
+task runChanProdConsMCBench(type : JavaExec) {
     main = 'macrobenchmarks.ChannelProdConsMonteCarloBenchmark'
     classpath sourceSets.jmh.runtimeClasspath
 }
