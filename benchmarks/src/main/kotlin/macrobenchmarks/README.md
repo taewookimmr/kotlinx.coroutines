@@ -4,7 +4,7 @@ This package contains various macrobenchmarks that test different aspects of the
 
 ## Channel producer consumer monte carlo benchmark
 
-The benchmark is similiar to the `ChannelProducerConsumerBenchmark.kt`, but the difference is that it has random numbers of producers and consumers depending on the thread number, and it tries to get the average time of executions varying producers and consumers numbers.
+The benchmark is similar to the `ChannelProducerConsumerBenchmark.kt`, but the difference is that it has random numbers of producers and consumers depending on the thread number, and it tries to get the average time of executions varying producers and consumers numbers.
 
 The benchmark is designed to test the performance of channels under contention, and how it depends on the different types of channels and dispatchers and usage of select.
 

@@ -76,18 +76,15 @@ abstract class ChannelProducerConsumerBenchmarkIteration(private val channelCrea
 }
 
 enum class DispatcherCreator(val create: (parallelism: Int) -> CoroutineDispatcher) {
-    FORK_JOIN({ parallelism ->  ForkJoinPool(parallelism).asCoroutineDispatcher() }),
-    EXPERIMENTAL({ parallelism -> ExperimentalCoroutineDispatcher(corePoolSize = parallelism, maxPoolSize = parallelism) })
+    ForkJoin({ parallelism ->  ForkJoinPool(parallelism).asCoroutineDispatcher() }),
+    Experimental({ parallelism -> ExperimentalCoroutineDispatcher(corePoolSize = parallelism, maxPoolSize = parallelism) })
 }
 
 enum class ChannelCreator(private val capacity: Int) {
-    RENDEZVOUS(Channel.RENDEZVOUS),
-    BUFFERED_1(1),
-    BUFFERED_2(2),
-    BUFFERED_4(4),
-    BUFFERED_32(32),
-    BUFFERED_128(128),
-    BUFFERED_UNLIMITED(Channel.UNLIMITED);
+    Rendezvous(Channel.RENDEZVOUS),
+    `Buffered(16)`(16),
+    `Buffered(128)`(128),
+    Unlimited(Channel.UNLIMITED);
 
     fun create(): Channel<Int> = Channel(capacity)
 }
