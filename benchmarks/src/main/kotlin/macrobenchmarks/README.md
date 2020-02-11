@@ -8,6 +8,6 @@ The benchmark is similar to the `ChannelProducerConsumerBenchmark.kt`, but the d
 
 The benchmark is designed to test the performance of channels under contention, and how it depends on the different types of channels and dispatchers and usage of select.
 
-You can find more details of the benchmark in the `ChannelProducerConsumerBenchmarkMonteCarlo.kt`. All the configuration for this benchmark are contained there, too. You can change them according your desire to test different work load.
+You can find more details of the benchmark in the `ChannelProdConsMonteCarloBenchmark.kt`. All the configuration for this benchmark are contained there, too. You can change them according your desire to test different work load.
 
-This benchmark could be run using gradle task `./gradlew runChannelProducerConsumerMonteCarloBenchmark`.
+This benchmark could be run using gradle task `./gradlew runChannelMonteCarloBenchmark`.

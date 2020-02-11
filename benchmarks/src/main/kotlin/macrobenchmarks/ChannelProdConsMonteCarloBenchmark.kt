@@ -2,7 +2,7 @@
  * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-@file:JvmName("ChannelProducerConsumerMonteCarloBenchmark")
+@file:JvmName("ChannelProdConsMonteCarloBenchmark")
 
 package macrobenchmarks
 
@@ -55,7 +55,7 @@ private val WITH_SELECT = listOf(false, true)
 /**
  * Benchmark output file
  */
-private const val OUTPUT = "out/results_channel_producer_consumer_montecarlo.csv"
+private const val OUTPUT = "out/results_channel_prod_cons_montecarlo.csv"
 /**
  * Options for the new jvm instance
  */
@@ -103,7 +103,6 @@ fun main() {
                     currentConfigurationNumber++
                 }
             }
-
         }
     }
 }
@@ -193,7 +192,7 @@ fun runIteration(threads: Int, channelCreator: ChannelCreator, withSelect: Boole
     val producers = Random.nextInt(1, max(threads, 2))
     val consumers = max(1, threads - producers)
 
-    val channelProducerConsumerBenchmarkWorker = ChannelProducerConsumerBenchmarkIterationMonteCarlo(
+    val channelProducerConsumerBenchmarkWorker = MonteCarloBenchmarkIteration(
             channelCreator, withSelect, producers, consumers,
             dispatcherCreator, producers + consumers, APPROXIMATE_BATCH_SIZE)
 
@@ -209,14 +208,14 @@ fun runIteration(threads: Int, channelCreator: ChannelCreator, withSelect: Boole
     return (endTime - startTime) / 1_000_000 // ms
 }
 
-class ChannelProducerConsumerBenchmarkIterationMonteCarlo(channelCreator: ChannelCreator,
-                                                          withSelect: Boolean,
-                                                          producers: Int,
-                                                          consumers: Int,
-                                                          dispatcherCreator: DispatcherCreator,
-                                                          parallelism: Int,
-                                                          approximateBatchSize : Int)
-    : ChannelProducerConsumerBenchmarkIteration(channelCreator, withSelect, producers, consumers, dispatcherCreator, parallelism, approximateBatchSize) {
+class MonteCarloBenchmarkIteration(channelCreator: ChannelCreator,
+                                   withSelect: Boolean,
+                                   producers: Int,
+                                   consumers: Int,
+                                   dispatcherCreator: DispatcherCreator,
+                                   parallelism: Int,
+                                   approximateBatchSize : Int)
+    : ChannelProdConsBenchmarkIteration(channelCreator, withSelect, producers, consumers, dispatcherCreator, parallelism, approximateBatchSize) {
     private val producerWorks : Array<Int>
 
     private val consumerWorks : Array<Int>

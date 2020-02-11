@@ -10,13 +10,13 @@ import kotlinx.coroutines.scheduling.*
 import kotlinx.coroutines.selects.*
 import java.util.concurrent.*
 
-abstract class ChannelProducerConsumerBenchmarkIteration(private val channelCreator: ChannelCreator,
-                                                         private val withSelect: Boolean,
-                                                         private val producers: Int,
-                                                         private val consumers: Int,
-                                                         dispatcherCreator: DispatcherCreator,
-                                                         parallelism: Int,
-                                                         private val approximateBatchSize: Int) {
+abstract class ChannelProdConsBenchmarkIteration(private val channelCreator: ChannelCreator,
+                                                 private val withSelect: Boolean,
+                                                 private val producers: Int,
+                                                 private val consumers: Int,
+                                                 dispatcherCreator: DispatcherCreator,
+                                                 parallelism: Int,
+                                                 private val approximateBatchSize: Int) {
     private val channel: Channel<Int> = channelCreator.create()
     val dispatcher = dispatcherCreator.create(parallelism)
 

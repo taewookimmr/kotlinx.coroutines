@@ -30,10 +30,10 @@ import java.util.concurrent.*
 @State(Scope.Benchmark)
 open class ChannelProducerConsumerBenchmark {
     @Param
-    private var _0_dispatcher: DispatcherCreator = DispatcherCreator.FORK_JOIN
+    private var _0_dispatcher: DispatcherCreator = DispatcherCreator.ForkJoin
 
     @Param
-    private var _1_channel: ChannelCreator = ChannelCreator.RENDEZVOUS
+    private var _1_channel: ChannelCreator = ChannelCreator.Rendezvous
 
     @Param("0", "1000")
     private var _2_coroutines: Int = 0
@@ -52,7 +52,7 @@ open class ChannelProducerConsumerBenchmark {
         if (_2_coroutines != 0) return
         val producers = max(1, _4_parallelism - 1)
         val consumers = 1
-        val iteration = ChannelProducerConsumerBenchmarkIterationJMH(_0_dispatcher, _1_channel, _3_withSelect,
+        val iteration = JMHBenchmarkIteration(_0_dispatcher, _1_channel, _3_withSelect,
             _4_parallelism, producers, consumers)
         iteration.run()
     }
@@ -61,7 +61,7 @@ open class ChannelProducerConsumerBenchmark {
     fun mpmc() {
         val producers = if (_2_coroutines == 0) (_4_parallelism + 1) / 2 else _2_coroutines / 2
         val consumers = producers
-        val iteration = ChannelProducerConsumerBenchmarkIterationJMH(_0_dispatcher, _1_channel, _3_withSelect,
+        val iteration = JMHBenchmarkIteration(_0_dispatcher, _1_channel, _3_withSelect,
             _4_parallelism, producers, consumers)
         iteration.run()
     }
@@ -70,9 +70,9 @@ open class ChannelProducerConsumerBenchmark {
 private const val AVERAGE_WORK = 80
 private const val APPROX_BATCH_SIZE = 100000
 
-class ChannelProducerConsumerBenchmarkIterationJMH(dispatcherCreator: DispatcherCreator, channelCreator: ChannelCreator,
-                                                   withSelect: Boolean, parallelism: Int, producers: Int, consumers: Int)
-    : ChannelProducerConsumerBenchmarkIteration(channelCreator, withSelect, producers, consumers, dispatcherCreator,  parallelism, APPROX_BATCH_SIZE) {
+class JMHBenchmarkIteration(dispatcherCreator: DispatcherCreator, channelCreator: ChannelCreator,
+                            withSelect: Boolean, parallelism: Int, producers: Int, consumers: Int)
+    : ChannelProdConsBenchmarkIteration(channelCreator, withSelect, producers, consumers, dispatcherCreator,  parallelism, APPROX_BATCH_SIZE) {
     override fun doProducerWork(id: Int) = doGeomDistrWork(AVERAGE_WORK)
     override fun doConsumerWork(id: Int) = doGeomDistrWork(AVERAGE_WORK)
 }

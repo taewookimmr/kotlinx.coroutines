@@ -1,4 +1,4 @@
-# To run this script run the command 'python3 scripts/generate_plots_channel_producer_consumer_monte_carlo.py'
+# To run this script run the command 'python3 scripts/generate_plots_channel_prod_cons_monte_carlo.py'
 # in the benchmarks/ folder
 
 import pandas as pd
@@ -7,8 +7,8 @@ import locale
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.backends.backend_pdf import PdfPages
 
-input_file = "out/results_channel_producer_consumer_montecarlo.csv"
-output_file = "out/channel-producer-consumer-monte-carlo.pdf"
+input_file = "out/results_channel_prod_cons_montecarlo.csv"
+output_file = "out/channel-prod-cons-monte-carlo.pdf"
 # Please change the value of this variable according to the ChannelProducerConsumerMonteCarloBenchmark.APPROXIMATE_BATCH_SIZE
 approx_batch_size = 10000
 
@@ -53,9 +53,9 @@ def gen_file(pdf):
     dp = locale.localeconv()['decimal_point']
     data = pd.read_csv(input_file, sep=",", decimal=dp)
     plt.rcParams.update({'font.size': 15})
-    fig, ax_arr = plt.subplots(nrows=len(data.dispatcherType.unique()), ncols=2, figsize=(20, 15))
+    fig, ax_arr = plt.subplots(nrows=len(data.dispatcherType.unique()), ncols=1, figsize=(20, 15))
     draw(data, ax_arr)
-    lines, labels = ax_arr[0, 0].get_legend_handles_labels()
+    lines, labels = ax_arr[0].get_legend_handles_labels()
     fig.legend(lines, labels, loc='upper center', borderpad=0, ncol=2, frameon=False, borderaxespad=2, prop={'size': 15})
 
     plt.tight_layout(pad=12, w_pad=2, h_pad=1)
