@@ -127,7 +127,7 @@ class MonteCarloIterationProcess {
 }
 
 private fun writeOutputHeader() = PrintWriter(OUTPUT).use { pw ->
-    pw.println("channel,threads,dispatcherType,withSelect,result,std,iterations")
+    pw.println("channel,threads,dispatcherType,withSelect,result,error,iterations")
 }
 
 private fun writeIterationResults(channel: ChannelCreator, threads: Int, dispatcherType : DispatcherCreator,
