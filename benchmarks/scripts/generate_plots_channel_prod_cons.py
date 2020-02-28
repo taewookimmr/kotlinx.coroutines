@@ -1,7 +1,7 @@
-# To run this script run the command 'python3 scripts/generate_plots_channel_producer_consumer_monte_carlo.py'
-# in the benchmarks/ folder or 'python3 generate_plots_channel_producer_consumer_monte_carlo.py' in the benchmarks/scripts/ folder
+# To run this script run the command 'python3 scripts/generate_plots_channel_prod_cons.py' in the benchmarks/ folder
 
 import pandas as pd
+import numpy as np
 import sys
 import matplotlib.pyplot as plt
 import locale
@@ -9,7 +9,7 @@ from matplotlib.ticker import FormatStrFormatter
 from matplotlib.backends.backend_pdf import PdfPages
 
 input_file = "build/reports/jmh/results.csv"
-output_file = "out/channel-producer-consumer.pdf"
+output_file = "out/channel-prod-cons.pdf"
 mpmc_benchmark_name = "benchmarks.ChannelProducerConsumerBenchmark.mpmc"
 spmc_benchmark_name = "benchmarks.ChannelProducerConsumerBenchmark.spmc"
 csv_columns = ["Benchmark", "Score", "Score Error (99,9%)", "Unit", "Param: _0_dispatcher", "Param: _1_channel", "Param: _2_coroutines", "Param: _3_withSelect", "Param: _4_parallelism"]
@@ -33,7 +33,10 @@ def next_marker():
         i += 1
 
 def draw(data, ax_arr):
-    flatten_ax_arr = ax_arr.flatten()
+    if isinstance(ax_arr, np.ndarray):
+        flatten_ax_arr = ax_arr.flatten()
+    else:
+        flatten_ax_arr = [ax_arr]
     for ax in flatten_ax_arr:
         ax.set_xscale('log', basex=2)
         ax.xaxis.set_major_formatter(FormatStrFormatter('%0.f'))
@@ -61,7 +64,9 @@ def draw_cons_prod(data, suptitle):
     plt.rcParams.update({'font.size': 15})
     fig, ax_arr = plt.subplots(nrows=2, ncols=len(data.dispatcher.unique()), figsize=(20, 15))
     draw(data, ax_arr)
-    lines, labels = ax_arr[0, 0].get_legend_handles_labels()
+    if isinstance(ax_arr, np.ndarray): ax = ax_arr[0]
+    else: ax = ax_arr
+    lines, labels = ax.get_legend_handles_labels()
     fig.suptitle(suptitle, fontsize=15, y=1)
     fig.legend(lines, labels, loc='upper center', borderpad=0, ncol=2, frameon=False, borderaxespad=2, prop={'size': 15})
 
